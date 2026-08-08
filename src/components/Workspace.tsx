@@ -137,6 +137,23 @@ export function Workspace() {
     patchActive({ lines: [], previewHtml: "" });
   }, [patchActive]);
 
+  const clearCode = useCallback(() => {
+    patchActive((tab) => ({
+      code: "",
+      previewHtml: "",
+      lines: [
+        ...tab.lines,
+        ...appendLines([
+          {
+            kind: "system",
+            text: "Editor cleared.",
+          },
+          { kind: "info", text: "" },
+        ]),
+      ],
+    }));
+  }, [patchActive]);
+
   const resetCode = useCallback(() => {
     const lang = getLanguage(activeTab.langId);
     patchActive((tab) => ({
@@ -389,6 +406,7 @@ export function Workspace() {
         isRunning={isRunning}
         onLanguageChange={handleLanguageChange}
         onRun={() => void runCode()}
+        onClearCode={clearCode}
         onClearTerminal={clearOutput}
         onResetCode={resetCode}
       />

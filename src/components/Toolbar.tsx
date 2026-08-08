@@ -17,6 +17,7 @@ type ToolbarProps = {
   isRunning: boolean;
   onLanguageChange: (id: LangId) => void;
   onRun: () => void;
+  onClearCode: () => void;
   onClearTerminal: () => void;
   onResetCode: () => void;
 };
@@ -27,6 +28,7 @@ export function Toolbar({
   isRunning,
   onLanguageChange,
   onRun,
+  onClearCode,
   onClearTerminal,
   onResetCode,
 }: ToolbarProps) {
@@ -204,8 +206,18 @@ export function Toolbar({
       <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
+          onClick={onClearCode}
+          disabled={isRunning}
+          title="Clear all code in the editor"
+          className="rounded-md border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Clear
+        </button>
+        <button
+          type="button"
           onClick={onResetCode}
           disabled={isRunning}
+          title="Restore sample code"
           className="rounded-md border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Reset
@@ -214,9 +226,10 @@ export function Toolbar({
           type="button"
           onClick={onClearTerminal}
           disabled={isRunning}
+          title="Clear terminal output"
           className="rounded-md border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Clear
+          Clear output
         </button>
         <button
           type="button"
