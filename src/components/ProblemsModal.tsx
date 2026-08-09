@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal } from "@/components/Modal";
+import { Pagination, usePageSlice } from "@/components/Pagination";
 import { PROBLEMS, type Problem } from "@/lib/problems";
 import { getLanguage } from "@/lib/languages";
+
+const PAGE_SIZE = 5;
 
 type ProblemsModalProps = {
   open: boolean;
@@ -20,6 +23,7 @@ const DIFF_COLOR: Record<Problem["difficulty"], string> = {
 export function ProblemsModal({ open, onClose, onOpen }: ProblemsModalProps) {
   const [diff, setDiff] = useState<"all" | Problem["difficulty"]>("all");
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
 
   const items = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -34,11 +38,31 @@ export function ProblemsModal({ open, onClose, onOpen }: ProblemsModalProps) {
     });
   }, [diff, q]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [diff, q]);
+
+  useEffect(() => {
+    if (open) setPage(1);
+  }, [open]);
+
+  const { pageItems, totalPages, safePage } = usePageSlice(
+    items,
+    page,
+    PAGE_SIZE
+  );
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
+
   return (
     <Modal open={open} onClose={onClose} title="Teacher Problem Pack" wide>
       <p className="mb-3 text-xs text-[var(--text-dim)]">
         Load a coding problem with starter code and automated tests. Great for
-        practice and classroom exercises.
+        practice and classroom exercises.{" "}
+        <span className="text-[var(--text)]">{PROBLEMS.length} problems</span>{" "}
+        available.
       </p>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -66,7 +90,7 @@ export function ProblemsModal({ open, onClose, onOpen }: ProblemsModalProps) {
       </div>
 
       <div className="flex flex-col gap-2">
-        {items.map((p) => {
+        {pageItems.map((p) => {
           const lang = getLanguage(p.langId);
           const visibleTests = p.tests.filter((t) => !t.hidden).length;
           const hiddenTests = p.tests.filter((t) => t.hidden).length;
@@ -114,6 +138,14 @@ export function ProblemsModal({ open, onClose, onOpen }: ProblemsModalProps) {
           </p>
         )}
       </div>
+
+      <Pagination
+        page={safePage}
+        totalPages={totalPages}
+        totalItems={items.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
     </Modal>
   );
 }

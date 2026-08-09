@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal } from "@/components/Modal";
+import { Pagination, usePageSlice } from "@/components/Pagination";
 import {
   GALLERY,
   GALLERY_CATEGORIES,
   type GalleryItem,
 } from "@/lib/gallery";
 import { getLanguage } from "@/lib/languages";
+
+const PAGE_SIZE = 6;
 
 type GalleryModalProps = {
   open: boolean;
@@ -20,6 +23,7 @@ export function GalleryModal({ open, onClose, onOpen }: GalleryModalProps) {
     "all"
   );
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
 
   const items = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -33,6 +37,25 @@ export function GalleryModal({ open, onClose, onOpen }: GalleryModalProps) {
       );
     });
   }, [category, q]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [category, q]);
+
+  useEffect(() => {
+    if (open) setPage(1);
+  }, [open]);
+
+  const { pageItems, totalPages, safePage } = usePageSlice(
+    items,
+    page,
+    PAGE_SIZE
+  );
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
 
   return (
     <Modal open={open} onClose={onClose} title="Public Gallery" wide>
@@ -66,7 +89,7 @@ export function GalleryModal({ open, onClose, onOpen }: GalleryModalProps) {
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        {items.map((item) => {
+        {pageItems.map((item) => {
           const lang = getLanguage(item.langId);
           return (
             <button
@@ -102,6 +125,14 @@ export function GalleryModal({ open, onClose, onOpen }: GalleryModalProps) {
           </p>
         )}
       </div>
+
+      <Pagination
+        page={safePage}
+        totalPages={totalPages}
+        totalItems={items.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
     </Modal>
   );
 }
