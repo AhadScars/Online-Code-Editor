@@ -14,21 +14,30 @@ export type EditorTab = {
   previewHtml: string;
   /** Display name override (optional) */
   title?: string;
+  /** Active teacher problem id, if any */
+  problemId?: string | null;
 };
 
 export function createTabId(): string {
   return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function createTab(langId: LangId = "java"): EditorTab {
+export function createTab(
+  langId: LangId = "java",
+  overrides?: Partial<
+    Pick<EditorTab, "code" | "stdin" | "title" | "problemId">
+  >
+): EditorTab {
   const lang = getLanguage(langId);
   return {
     id: createTabId(),
     langId,
-    code: lang.sample,
-    stdin: lang.defaultStdin,
+    code: overrides?.code ?? lang.sample,
+    stdin: overrides?.stdin ?? lang.defaultStdin,
     lines: [],
     previewHtml: "",
+    title: overrides?.title,
+    problemId: overrides?.problemId ?? null,
   };
 }
 

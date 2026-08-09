@@ -20,6 +20,12 @@ export function needsMoreInput(opts: {
   if (/(^|\n)\s*EOF\s*($|\n)/i.test(opts.stderr)) return true;
   if (/end of file|end of stream|failed to read input/i.test(err)) return true;
 
+  // Go, Rust, Ruby, PHP, C#, Kotlin common EOF / scan failures
+  if (/unexpected end of (JSON )?input|EOFException|Scanner.*exception/i.test(err))
+    return true;
+  if (/ErrUnexpectedEOF|io\.EOF|unexpected EOF/i.test(err)) return true;
+  if (/gets: nil|undefined method.*for nil/i.test(err)) return true;
+
   // C/C++ often exit non-zero on failed scanf/cin with little stderr
   if (
     opts.exitCode !== null &&

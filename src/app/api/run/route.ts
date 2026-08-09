@@ -42,6 +42,46 @@ const JUDGE0_LANG: Record<
     versionLabel: "Node.js (Judge0)",
     fileName: () => "main.js",
   },
+  typescript: {
+    id: Number(process.env.JUDGE0_TS_LANGUAGE_ID ?? 74),
+    versionLabel: "TypeScript (Judge0)",
+    fileName: () => "main.ts",
+  },
+  go: {
+    id: Number(process.env.JUDGE0_GO_LANGUAGE_ID ?? 60),
+    versionLabel: "Go (Judge0)",
+    fileName: () => "main.go",
+  },
+  rust: {
+    id: Number(process.env.JUDGE0_RUST_LANGUAGE_ID ?? 73),
+    versionLabel: "Rust (Judge0)",
+    fileName: () => "main.rs",
+  },
+  kotlin: {
+    id: Number(process.env.JUDGE0_KOTLIN_LANGUAGE_ID ?? 78),
+    versionLabel: "Kotlin (Judge0)",
+    fileName: () => "Main.kt",
+  },
+  php: {
+    id: Number(process.env.JUDGE0_PHP_LANGUAGE_ID ?? 68),
+    versionLabel: "PHP (Judge0)",
+    fileName: () => "main.php",
+  },
+  ruby: {
+    id: Number(process.env.JUDGE0_RUBY_LANGUAGE_ID ?? 72),
+    versionLabel: "Ruby (Judge0)",
+    fileName: () => "main.rb",
+  },
+  csharp: {
+    id: Number(process.env.JUDGE0_CSHARP_LANGUAGE_ID ?? 51),
+    versionLabel: "C# Mono (Judge0)",
+    fileName: () => "Main.cs",
+  },
+  sql: {
+    id: Number(process.env.JUDGE0_SQL_LANGUAGE_ID ?? 82),
+    versionLabel: "SQLite (Judge0)",
+    fileName: () => "query.sql",
+  },
 };
 
 type RunRequestBody = {

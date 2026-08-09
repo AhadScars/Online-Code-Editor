@@ -4,6 +4,14 @@ export type LangId =
   | "c"
   | "cpp"
   | "javascript"
+  | "typescript"
+  | "go"
+  | "rust"
+  | "kotlin"
+  | "php"
+  | "ruby"
+  | "csharp"
+  | "sql"
   | "html"
   | "css";
 
@@ -25,6 +33,8 @@ export type LanguageConfig = {
   stdinHint: string;
   badgeColor: string;
   sample: string;
+  /** File extensions for import detection */
+  extensions: string[];
 };
 
 export const LANGUAGES: LanguageConfig[] = [
@@ -39,6 +49,7 @@ export const LANGUAGES: LanguageConfig[] = [
     defaultStdin: "",
     stdinHint: "Scanner — type in terminal while running",
     badgeColor: "#e8bf6a",
+    extensions: [".java"],
     sample: `import java.util.*;
 
 public class Main {
@@ -70,6 +81,7 @@ public class Main {
     defaultStdin: "",
     stdinHint: "input() — during Run, type in the terminal",
     badgeColor: "#3572a5",
+    extensions: [".py"],
     sample: `
 name = input("Enter your name: ")
 n = int(input("Enter a number: "))
@@ -89,6 +101,7 @@ print(f"Double is: {n * 2}")
     defaultStdin: "",
     stdinHint: "scanf — during Run, type in the terminal",
     badgeColor: "#555555",
+    extensions: [".c", ".h"],
     sample: `#include <stdio.h>
 
 int main(void) {
@@ -126,6 +139,7 @@ int main(void) {
     defaultStdin: "",
     stdinHint: "cin — during Run, type in the terminal",
     badgeColor: "#f34b7d",
+    extensions: [".cpp", ".cc", ".cxx", ".hpp"],
     sample: `#include <iostream>
 #include <string>
 using namespace std;
@@ -163,6 +177,7 @@ int main() {
     defaultStdin: "",
     stdinHint: "",
     badgeColor: "#f0db4f",
+    extensions: [".js", ".mjs", ".cjs"],
     sample: `// JavaScript — runs in the browser
 console.log("Hello from JavaScript!");
 console.log("Write your code and press Run");
@@ -178,6 +193,221 @@ for (let i = 1; i <= 5; i++) {
 `,
   },
   {
+    id: "typescript",
+    label: "TypeScript",
+    monaco: "typescript",
+    fileName: "main.ts",
+    outputMode: "terminal",
+    runner: "judge0",
+    supportsStdin: false,
+    defaultStdin: "",
+    stdinHint: "",
+    badgeColor: "#3178c6",
+    extensions: [".ts"],
+    sample: `// TypeScript — runs on Judge0 (tsc + node)
+function greet(name: string, n: number): string {
+  return \`Hello, \${name}! Double is: \${n * 2}\`;
+}
+
+const message: string = greet("World", 21);
+console.log(message);
+
+const nums: number[] = [1, 2, 3, 4, 5];
+const sum = nums.reduce((a, b) => a + b, 0);
+console.log("Sum:", sum);
+`,
+  },
+  {
+    id: "go",
+    label: "Go",
+    monaco: "go",
+    fileName: "main.go",
+    outputMode: "terminal",
+    runner: "judge0",
+    supportsStdin: true,
+    defaultStdin: "",
+    stdinHint: "fmt.Scan — type in terminal while running",
+    badgeColor: "#00add8",
+    extensions: [".go"],
+    sample: `package main
+
+import "fmt"
+
+func main() {
+	var name string
+	var n int
+
+	fmt.Print("Enter your name: ")
+	fmt.Scan(&name)
+
+	fmt.Print("Enter a number: ")
+	fmt.Scan(&n)
+
+	fmt.Printf("Hello, %s!\\n", name)
+	fmt.Printf("Double is: %d\\n", n*2)
+}
+`,
+  },
+  {
+    id: "rust",
+    label: "Rust",
+    monaco: "rust",
+    fileName: "main.rs",
+    outputMode: "terminal",
+    runner: "judge0",
+    supportsStdin: true,
+    defaultStdin: "",
+    stdinHint: "stdin — type in terminal while running",
+    badgeColor: "#dea584",
+    extensions: [".rs"],
+    sample: `use std::io::{self, Write};
+
+fn main() {
+    let mut name = String::new();
+    print!("Enter your name: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut name).unwrap();
+    let name = name.trim();
+
+    let mut num = String::new();
+    print!("Enter a number: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut num).unwrap();
+    let n: i32 = num.trim().parse().unwrap_or(0);
+
+    println!("Hello, {}!", name);
+    println!("Double is: {}", n * 2);
+}
+`,
+  },
+  {
+    id: "kotlin",
+    label: "Kotlin",
+    monaco: "kotlin",
+    fileName: "Main.kt",
+    outputMode: "terminal",
+    runner: "judge0",
+    supportsStdin: true,
+    defaultStdin: "",
+    stdinHint: "readLine() — type in terminal while running",
+    badgeColor: "#a97bff",
+    extensions: [".kt", ".kts"],
+    sample: `fun main() {
+    print("Enter your name: ")
+    val name = readLine() ?: ""
+
+    print("Enter a number: ")
+    val n = readLine()?.toIntOrNull() ?: 0
+
+    println("Hello, $name!")
+    println("Double is: \${n * 2}")
+}
+`,
+  },
+  {
+    id: "php",
+    label: "PHP",
+    monaco: "php",
+    fileName: "main.php",
+    outputMode: "terminal",
+    runner: "judge0",
+    supportsStdin: true,
+    defaultStdin: "",
+    stdinHint: "fgets(STDIN) — type in terminal while running",
+    badgeColor: "#777bb4",
+    extensions: [".php"],
+    sample: `<?php
+echo "Enter your name: ";
+$name = trim(fgets(STDIN));
+
+echo "Enter a number: ";
+$n = (int) trim(fgets(STDIN));
+
+echo "Hello, $name!\\n";
+echo "Double is: " . ($n * 2) . "\\n";
+`,
+  },
+  {
+    id: "ruby",
+    label: "Ruby",
+    monaco: "ruby",
+    fileName: "main.rb",
+    outputMode: "terminal",
+    runner: "judge0",
+    supportsStdin: true,
+    defaultStdin: "",
+    stdinHint: "gets — type in terminal while running",
+    badgeColor: "#cc342d",
+    extensions: [".rb"],
+    sample: `print "Enter your name: "
+name = gets&.chomp || ""
+
+print "Enter a number: "
+n = (gets || "0").to_i
+
+puts "Hello, #{name}!"
+puts "Double is: #{n * 2}"
+`,
+  },
+  {
+    id: "csharp",
+    label: "C#",
+    monaco: "csharp",
+    fileName: "Main.cs",
+    outputMode: "terminal",
+    runner: "judge0",
+    supportsStdin: true,
+    defaultStdin: "",
+    stdinHint: "Console.ReadLine — type in terminal while running",
+    badgeColor: "#178600",
+    extensions: [".cs"],
+    sample: `using System;
+
+public class Program {
+    public static void Main(string[] args) {
+        Console.Write("Enter your name: ");
+        string name = Console.ReadLine() ?? "";
+
+        Console.Write("Enter a number: ");
+        int n = int.Parse(Console.ReadLine() ?? "0");
+
+        Console.WriteLine($"Hello, {name}!");
+        Console.WriteLine($"Double is: {n * 2}");
+    }
+}
+`,
+  },
+  {
+    id: "sql",
+    label: "SQL",
+    monaco: "sql",
+    fileName: "query.sql",
+    outputMode: "terminal",
+    runner: "judge0",
+    supportsStdin: false,
+    defaultStdin: "",
+    stdinHint: "",
+    badgeColor: "#e38c00",
+    extensions: [".sql"],
+    sample: `-- SQL (SQLite on Judge0)
+CREATE TABLE students (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  score INTEGER
+);
+
+INSERT INTO students (name, score) VALUES
+  ('Ada', 95),
+  ('Grace', 88),
+  ('Alan', 91);
+
+SELECT name, score
+FROM students
+WHERE score >= 90
+ORDER BY score DESC;
+`,
+  },
+  {
     id: "html",
     label: "HTML",
     monaco: "html",
@@ -188,6 +418,7 @@ for (let i = 1; i <= 5; i++) {
     defaultStdin: "",
     stdinHint: "",
     badgeColor: "#e44d26",
+    extensions: [".html", ".htm"],
     sample: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -249,6 +480,7 @@ for (let i = 1; i <= 5; i++) {
     defaultStdin: "",
     stdinHint: "",
     badgeColor: "#264de4",
+    extensions: [".css"],
     sample: `/* CSS preview — styles a demo page */
 * {
   box-sizing: border-box;
@@ -314,6 +546,10 @@ export function getLanguage(id: LangId): LanguageConfig {
   return LANGUAGES.find((l) => l.id === id) ?? LANGUAGES[0];
 }
 
+export function isLangId(value: string): value is LangId {
+  return LANGUAGES.some((l) => l.id === value);
+}
+
 export function extractPublicClassName(code: string): string {
   const match = code.match(/public\s+class\s+([A-Za-z_][A-Za-z0-9_]*)/);
   if (match?.[1]) return match[1];
@@ -331,6 +567,18 @@ export function fileNameFor(lang: LangId, code: string): string {
   return getLanguage(lang).fileName;
 }
 
+/** Detect language from a file name / extension. */
+export function langFromFileName(name: string): LangId | null {
+  const lower = name.toLowerCase();
+  const dot = lower.lastIndexOf(".");
+  if (dot < 0) return null;
+  const ext = lower.slice(dot);
+  for (const lang of LANGUAGES) {
+    if (lang.extensions.includes(ext)) return lang.id;
+  }
+  return null;
+}
+
 /** Shell-style command shown in the terminal when running. */
 export function runCommandFor(lang: LangId, code: string): string {
   const file = fileNameFor(lang, code);
@@ -345,13 +593,38 @@ export function runCommandFor(lang: LangId, code: string): string {
       return `> g++ ${file} -o main && ./main`;
     case "javascript":
       return `> node ${file}`;
+    case "typescript":
+      return `> tsc ${file} && node ${file.replace(/\.ts$/, ".js")}`;
+    case "go":
+      return `> go run ${file}`;
+    case "rust":
+      return `> rustc ${file} -o main && ./main`;
+    case "kotlin":
+      return `> kotlinc ${file} -include-runtime -d main.jar && java -jar main.jar`;
+    case "php":
+      return `> php ${file}`;
+    case "ruby":
+      return `> ruby ${file}`;
+    case "csharp":
+      return `> csc ${file} && mono Main.exe`;
+    case "sql":
+      return `> sqlite3 < ${file}`;
     default:
       return `> run ${file}`;
   }
 }
 
 export function usesWideTabs(lang: LangId): boolean {
-  return lang === "java" || lang === "python" || lang === "c" || lang === "cpp";
+  return (
+    lang === "java" ||
+    lang === "python" ||
+    lang === "c" ||
+    lang === "cpp" ||
+    lang === "go" ||
+    lang === "rust" ||
+    lang === "kotlin" ||
+    lang === "csharp"
+  );
 }
 
 /** Build a full HTML document for the preview pane. */

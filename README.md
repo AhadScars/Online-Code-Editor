@@ -4,22 +4,24 @@ IntelliJ-style **two-pane** web IDE: write code in Monaco, see **terminal** or *
 
 ## Features
 
-- Languages: **Java**, **Python**, **C**, **C++**, **JavaScript**, **HTML**, **CSS**
+- Languages: **Java**, **Python**, **C**, **C++**, **JavaScript**, **TypeScript**, **Go**, **Rust**, **Kotlin**, **PHP**, **Ruby**, **C#**, **SQL**, **HTML**, **CSS**
 - Monaco editor with syntax highlighting per language
-- Split layout: **editor (top)** + **terminal / preview (bottom)**, drag to resize
+- Multi-tab workspace + split layout (editor / terminal or preview)
 - **Run / Preview** + `Ctrl/Cmd + Enter`
-- Code is remembered when switching languages
-- Optional **stdin** for Java, Python, C, and C++
+- **Share** playground links (open the same code in any browser)
+- **Import** files (toolbar or drag-and-drop) + **Export** download
+- **Public Gallery** of examples
+- **Teacher Problem Pack** with starter code + automated tests
+- Run stats: wall time, **CPU time**, and **memory** (Judge0)
+- Interactive **stdin** for supported languages
 
 | Language | Output |
 |----------|--------|
-| Java | Terminal (Judge0 sandbox) |
-| Python | Terminal (Judge0 sandbox) |
-| C | Terminal (Judge0 sandbox) |
-| C++ | Terminal (Judge0 sandbox) |
-| JavaScript | Terminal (browser console) |
-| HTML | Live preview iframe |
-| CSS | Live preview on a demo page |
+| Java, Python, C, C++ | Terminal (Judge0) |
+| TypeScript, Go, Rust, Kotlin | Terminal (Judge0) |
+| PHP, Ruby, C#, SQL | Terminal (Judge0) |
+| JavaScript | Terminal (browser) |
+| HTML / CSS | Live preview |
 
 ## How execution works
 

@@ -3,18 +3,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CodeEditor } from "@/components/CodeEditor";
 import { EditorTabs } from "@/components/EditorTabs";
+import { GalleryModal } from "@/components/GalleryModal";
 import { Preview } from "@/components/Preview";
+import { ProblemPanel } from "@/components/ProblemPanel";
+import { ProblemsModal } from "@/components/ProblemsModal";
+import { ShareModal } from "@/components/ShareModal";
 import { Terminal, type TerminalLine } from "@/components/Terminal";
 import { Toolbar } from "@/components/Toolbar";
+import type { GalleryItem } from "@/lib/gallery";
 import {
   type LangId,
   buildPreviewHtml,
   fileNameFor,
   getLanguage,
+  langFromFileName,
   runCommandFor,
 } from "@/lib/languages";
+import {
+  type Problem,
+  type TestRunResult,
+  getProblem,
+  runProblemTests,
+} from "@/lib/problems";
 import { runInteractiveJudge0 } from "@/lib/runInteractive";
 import { runJavaScript } from "@/lib/runJs";
+import {
+  buildShareUrl,
+  readShareFromLocation,
+} from "@/lib/share";
 import {
   type EditorTab,
   createTab,
@@ -44,6 +60,24 @@ function updateTab(
   });
 }
 
+function formatRunStats(opts: {
+  wallSec: string;
+  time?: string | null;
+  memory?: number | null;
+}): string {
+  const parts: string[] = [`Finished in ${opts.wallSec}s`];
+  const detail: string[] = [];
+  if (opts.time) detail.push(`${opts.time}s CPU`);
+  if (opts.memory != null && opts.memory > 0) {
+    const mb = opts.memory / 1024;
+    detail.push(
+      mb >= 1 ? `${mb.toFixed(1)} MB memory` : `${opts.memory} KB memory`
+    );
+  }
+  if (detail.length) parts.push(`(${detail.join(" · ")})`);
+  return parts.join(" ");
+}
+
 export function Workspace() {
   const first = useMemo(() => createTab("java"), []);
   const [tabs, setTabs] = useState<EditorTab[]>([first]);
@@ -52,6 +86,13 @@ export function Workspace() {
   const [runningTabId, setRunningTabId] = useState<string | null>(null);
   const [waitingForInput, setWaitingForInput] = useState(false);
   const [editorRatio, setEditorRatio] = useState(0.62);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [problemsOpen, setProblemsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const [testResults, setTestResults] = useState<TestRunResult[] | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const shareBootstrapped = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const runLockRef = useRef(false);
@@ -80,6 +121,31 @@ export function Workspace() {
     [activeTab, displayName]
   );
 
+  const activeProblem: Problem | null = useMemo(() => {
+    if (!activeTab.problemId) return null;
+    return getProblem(activeTab.problemId) ?? null;
+  }, [activeTab.problemId]);
+
+  // Load shareable link on first mount
+  useEffect(() => {
+    if (shareBootstrapped.current) return;
+    shareBootstrapped.current = true;
+    if (typeof window === "undefined") return;
+    const payload = readShareFromLocation(window.location.search);
+    if (!payload) return;
+    const tab = createTab(payload.l, {
+      code: payload.c,
+      stdin: payload.s,
+      title: payload.t,
+    });
+    setTabs([tab]);
+    setActiveTabId(tab.id);
+    // Clean URL without losing ability to re-share
+    const url = new URL(window.location.href);
+    url.searchParams.delete("p");
+    window.history.replaceState({}, "", url.pathname + url.hash);
+  }, []);
+
   const patchActive = useCallback(
     (patch: Partial<EditorTab> | ((tab: EditorTab) => Partial<EditorTab>)) => {
       setTabs((prev) => updateTab(prev, activeTabId, patch));
@@ -100,12 +166,15 @@ export function Workspace() {
   const handleLanguageChange = useCallback(
     (id: LangId) => {
       const lang = getLanguage(id);
+      setTestResults(null);
       patchActive({
         langId: id,
         code: lang.sample,
         lines: [],
         previewHtml: "",
         stdin: lang.defaultStdin,
+        problemId: null,
+        title: undefined,
       });
     },
     [patchActive]
@@ -115,6 +184,7 @@ export function Workspace() {
     const tab = createTab(langId);
     setTabs((prev) => [...prev, tab]);
     setActiveTabId(tab.id);
+    setTestResults(null);
   }, []);
 
   const handleCloseTab = useCallback(
@@ -126,6 +196,7 @@ export function Workspace() {
         if (activeTabId === id) {
           const fallback = next[Math.max(0, idx - 1)] ?? next[0];
           setActiveTabId(fallback.id);
+          setTestResults(null);
         }
         return next;
       });
@@ -155,6 +226,23 @@ export function Workspace() {
   }, [patchActive]);
 
   const resetCode = useCallback(() => {
+    if (activeProblem) {
+      patchActive((tab) => ({
+        code: activeProblem.starterCode,
+        lines: [
+          ...tab.lines,
+          ...appendLines([
+            {
+              kind: "system",
+              text: `Problem starter restored: ${activeProblem.title}`,
+            },
+            { kind: "info", text: "" },
+          ]),
+        ],
+      }));
+      setTestResults(null);
+      return;
+    }
     const lang = getLanguage(activeTab.langId);
     patchActive((tab) => ({
       code: lang.sample,
@@ -170,7 +258,7 @@ export function Workspace() {
         ]),
       ],
     }));
-  }, [activeTab.langId, patchActive]);
+  }, [activeTab.langId, activeProblem, patchActive]);
 
   const appendToTab = useCallback(
     (
@@ -185,6 +273,200 @@ export function Workspace() {
     },
     []
   );
+
+  const exportCode = useCallback(() => {
+    const tab = tabsRef.current.find((t) => t.id === activeTabId);
+    if (!tab) return;
+
+    const name = tabDisplayName(tab, tabsRef.current);
+    const blob = new Blob([tab.code], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    appendToTab(tab.id, [
+      { kind: "system", text: `Exported ${name}` },
+      { kind: "info", text: "" },
+    ]);
+  }, [activeTabId, appendToTab]);
+
+  const importFile = useCallback(
+    async (file: File) => {
+      try {
+        const text = await file.text();
+        const langId = langFromFileName(file.name) ?? activeTab.langId;
+        const tab = createTab(langId, {
+          code: text,
+          title: file.name,
+          problemId: null,
+        });
+        setTabs((prev) => [...prev, tab]);
+        setActiveTabId(tab.id);
+        setTestResults(null);
+        // delay append until tab exists in state — use lines on create
+        setTabs((prev) =>
+          updateTab(prev, tab.id, {
+            lines: appendLines([
+              {
+                kind: "system",
+                text: `Imported ${file.name} as ${getLanguage(langId).label}`,
+              },
+              { kind: "info", text: "" },
+            ]),
+          })
+        );
+      } catch {
+        appendToTab(activeTabId, [
+          { kind: "error", text: `Failed to import ${file.name}` },
+          { kind: "info", text: "" },
+        ]);
+      }
+    },
+    [activeTab.langId, activeTabId, appendToTab]
+  );
+
+  const handleShare = useCallback(() => {
+    const tab = tabsRef.current.find((t) => t.id === activeTabId);
+    if (!tab || typeof window === "undefined") return;
+    const url = buildShareUrl(window.location.origin, window.location.pathname, {
+      l: tab.langId,
+      c: tab.code,
+      s: tab.stdin || undefined,
+      t: tab.title,
+    });
+    setShareUrl(url);
+    setShareOpen(true);
+  }, [activeTabId]);
+
+  const openGalleryItem = useCallback((item: GalleryItem) => {
+    const tab = createTab(item.langId, {
+      code: item.code,
+      stdin: item.stdin,
+      title: item.title,
+      problemId: null,
+    });
+    tab.lines = appendLines([
+      { kind: "system", text: `Opened gallery: ${item.title}` },
+      { kind: "info", text: "" },
+    ]);
+    setTabs((prev) => [...prev, tab]);
+    setActiveTabId(tab.id);
+    setTestResults(null);
+  }, []);
+
+  const openProblem = useCallback((problem: Problem) => {
+    const tab = createTab(problem.langId, {
+      code: problem.starterCode,
+      title: problem.title,
+      problemId: problem.id,
+    });
+    tab.lines = appendLines([
+      {
+        kind: "system",
+        text: `Problem loaded: ${problem.title}`,
+      },
+      {
+        kind: "info",
+        text: "Write your solution, then click Run tests.",
+      },
+      { kind: "info", text: "" },
+    ]);
+    setTabs((prev) => [...prev, tab]);
+    setActiveTabId(tab.id);
+    setTestResults(null);
+  }, []);
+
+  const clearProblem = useCallback(() => {
+    patchActive({ problemId: null, title: undefined });
+    setTestResults(null);
+  }, [patchActive]);
+
+  const handleRunTests = useCallback(async () => {
+    if (runLockRef.current || !activeProblem) return;
+    const tab = tabsRef.current.find((t) => t.id === activeTabId);
+    if (!tab) return;
+
+    runLockRef.current = true;
+    abortedRef.current = false;
+    setRunningTabId(tab.id);
+    setIsRunning(true);
+    setTestResults(null);
+
+    appendToTab(tab.id, [
+      {
+        kind: "system",
+        text: `> run tests · ${activeProblem.title} (${activeProblem.tests.length} cases)`,
+      },
+    ]);
+
+    try {
+      const results = await runProblemTests(activeProblem, tab.code);
+      setTestResults(results);
+      const passed = results.filter((r) => r.passed).length;
+      const total = results.length;
+      for (const r of results) {
+        if (r.hidden) {
+          appendToTab(tab.id, [
+            {
+              kind: r.passed ? "success" : "error",
+              text: r.passed
+                ? `✓ Hidden test passed`
+                : `✗ Hidden test failed${r.error ? `: ${r.error}` : ""}`,
+            },
+          ]);
+        } else {
+          appendToTab(tab.id, [
+            {
+              kind: r.passed ? "success" : "error",
+              text: r.passed
+                ? `✓ ${r.label}`
+                : `✗ ${r.label}${r.error ? `: ${r.error}` : ""}`,
+            },
+          ]);
+          if (!r.passed && !r.error) {
+            appendToTab(tab.id, [
+              {
+                kind: "info",
+                text: `  expected: ${JSON.stringify(r.expected)}`,
+              },
+              {
+                kind: "info",
+                text: `  got:      ${JSON.stringify(r.actual.trim())}`,
+              },
+            ]);
+          }
+        }
+      }
+      appendToTab(tab.id, [
+        {
+          kind: passed === total ? "success" : "error",
+          text:
+            passed === total
+              ? `All ${total} tests passed`
+              : `${passed}/${total} tests passed`,
+        },
+        { kind: "info", text: "" },
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Test run failed";
+      appendToTab(tab.id, [
+        { kind: "error", text: message },
+        { kind: "info", text: "" },
+      ]);
+    } finally {
+      setIsRunning(false);
+      setRunningTabId(null);
+      runLockRef.current = false;
+    }
+  }, [activeProblem, activeTabId, appendToTab]);
 
   const clearInputWait = useCallback(() => {
     setWaitingForInput(false);
@@ -204,7 +486,6 @@ export function Workspace() {
     const resolve = inputResolverRef.current;
     inputResolverRef.current = null;
     setWaitingForInput(false);
-    // Unblock any pending readLine
     resolve?.("");
   }, []);
 
@@ -236,7 +517,7 @@ export function Workspace() {
       if (result.error && result.signal === "ABORTED") {
         appendToTab(tabId, [
           { kind: "error", text: "Process stopped." },
-          { kind: "info", text: `Finished in ${elapsed}s` },
+          { kind: "info", text: formatRunStats({ wallSec: elapsed }) },
           { kind: "info", text: "" },
         ]);
         return;
@@ -245,24 +526,27 @@ export function Workspace() {
       if (result.error && !result.compileFailed) {
         appendToTab(tabId, [
           { kind: "error", text: `Error: ${result.error}` },
-          { kind: "info", text: `Finished in ${elapsed}s` },
+          {
+            kind: "info",
+            text: formatRunStats({
+              wallSec: elapsed,
+              time: result.time,
+              memory: result.memory,
+            }),
+          },
           { kind: "info", text: "" },
         ]);
         return;
       }
 
-      const cpu = result.time ? `${result.time}s CPU` : null;
-      const mem =
-        result.memory != null
-          ? `${Math.round(result.memory / 1024)} MB`
-          : null;
-      const stats = [cpu, mem].filter(Boolean).join(" · ");
       appendToTab(tabId, [
         {
           kind: "info",
-          text: stats
-            ? `Finished in ${elapsed}s (${stats})`
-            : `Finished in ${elapsed}s`,
+          text: formatRunStats({
+            wallSec: elapsed,
+            time: result.time,
+            memory: result.memory,
+          }),
         },
         { kind: "info", text: "" },
       ]);
@@ -324,13 +608,15 @@ export function Workspace() {
             ? "Process finished successfully"
             : "Process finished with errors",
         });
-        next.push({ kind: "info", text: `Finished in ${elapsed}s` });
+        next.push({
+          kind: "info",
+          text: formatRunStats({ wallSec: elapsed }),
+        });
         next.push({ kind: "info", text: "" });
         appendToTab(tab.id, next);
         return;
       }
 
-      // Java / Python / C / C++ — interactive terminal I/O (real IDE style)
       await runInteractiveLanguage(tab.id, tab.langId, tab.code);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Network error";
@@ -395,11 +681,43 @@ export function Workspace() {
     return () => window.removeEventListener("keydown", onKey);
   }, [runCode, handleNewTab, handleCloseTab, activeTab.langId, activeTabId]);
 
+  // Drag-and-drop import onto workspace
+  useEffect(() => {
+    const onDragOver = (e: DragEvent) => {
+      if (!e.dataTransfer?.types?.includes("Files")) return;
+      e.preventDefault();
+      setDragOver(true);
+    };
+    const onDragLeave = (e: DragEvent) => {
+      if (e.relatedTarget == null) setDragOver(false);
+    };
+    const onDrop = (e: DragEvent) => {
+      setDragOver(false);
+      if (!e.dataTransfer?.files?.length) return;
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) void importFile(file);
+    };
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("dragleave", onDragLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("dragleave", onDragLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, [importFile]);
+
+  // Reset test results when switching tabs
+  useEffect(() => {
+    setTestResults(null);
+  }, [activeTabId]);
+
   const showPreview = language.outputMode === "preview";
   const runningThisTab = isRunning && runningTabId === activeTab.id;
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col">
+    <div className="relative flex h-dvh min-h-0 flex-col">
       <Toolbar
         language={language}
         fileName={displayName}
@@ -409,6 +727,11 @@ export function Workspace() {
         onClearCode={clearCode}
         onClearTerminal={clearOutput}
         onResetCode={resetCode}
+        onExportCode={exportCode}
+        onImportFile={(file) => void importFile(file)}
+        onShare={handleShare}
+        onOpenGallery={() => setGalleryOpen(true)}
+        onOpenProblems={() => setProblemsOpen(true)}
       />
 
       <EditorTabs
@@ -418,6 +741,16 @@ export function Workspace() {
         onClose={handleCloseTab}
         onNewTab={handleNewTab}
       />
+
+      {activeProblem && (
+        <ProblemPanel
+          problem={activeProblem}
+          isRunning={isRunning}
+          results={testResults}
+          onRunTests={() => void handleRunTests()}
+          onClear={clearProblem}
+        />
+      )}
 
       <div ref={containerRef} className="flex min-h-0 flex-1 flex-col">
         <div
@@ -468,6 +801,30 @@ export function Workspace() {
           )}
         </div>
       </div>
+
+      {dragOver && (
+        <div className="pointer-events-none absolute inset-0 z-[50000] flex items-center justify-center bg-[var(--accent)]/15 backdrop-blur-[1px]">
+          <div className="rounded-xl border-2 border-dashed border-[var(--accent)] bg-[#1e1f22]/90 px-8 py-6 text-sm font-semibold text-[var(--text-bright)] shadow-xl">
+            Drop file to import
+          </div>
+        </div>
+      )}
+
+      <GalleryModal
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        onOpen={openGalleryItem}
+      />
+      <ProblemsModal
+        open={problemsOpen}
+        onClose={() => setProblemsOpen(false)}
+        onOpen={openProblem}
+      />
+      <ShareModal
+        open={shareOpen}
+        url={shareUrl}
+        onClose={() => setShareOpen(false)}
+      />
     </div>
   );
 }

@@ -181,6 +181,8 @@ export function EditorTabs({
               left: menuPos.left,
               zIndex: 99999,
               minWidth: 200,
+              maxHeight: 360,
+              overflowY: "auto",
               background: "#2b2d30",
               border: "1px solid #555",
               borderRadius: 8,

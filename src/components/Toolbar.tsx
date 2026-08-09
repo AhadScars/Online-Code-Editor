@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ChangeEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { createPortal } from "react-dom";
@@ -20,6 +21,11 @@ type ToolbarProps = {
   onClearCode: () => void;
   onClearTerminal: () => void;
   onResetCode: () => void;
+  onExportCode: () => void;
+  onImportFile: (file: File) => void;
+  onShare: () => void;
+  onOpenGallery: () => void;
+  onOpenProblems: () => void;
 };
 
 export function Toolbar({
@@ -31,6 +37,11 @@ export function Toolbar({
   onClearCode,
   onClearTerminal,
   onResetCode,
+  onExportCode,
+  onImportFile,
+  onShare,
+  onOpenGallery,
+  onOpenProblems,
 }: ToolbarProps) {
   const runLabel = language.outputMode === "preview" ? "Preview" : "Run";
   const [open, setOpen] = useState(false);
@@ -38,6 +49,7 @@ export function Toolbar({
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -87,6 +99,14 @@ export function Toolbar({
     if (isRunning) return;
     setOpen((v) => !v);
   };
+
+  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) onImportFile(file);
+  };
+
+  const accept = LANGUAGES.flatMap((l) => l.extensions).join(",");
 
   return (
     <header className="relative z-[210] flex h-11 shrink-0 items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--bg-toolbar)] px-3">
@@ -169,7 +189,9 @@ export function Toolbar({
                     top: menuPos.top,
                     left: menuPos.left,
                     zIndex: 99999,
-                    minWidth: 120,
+                    minWidth: 140,
+                    maxHeight: 320,
+                    overflowY: "auto",
                   }}
                   className="rounded border border-[var(--border)] bg-[#2b2d30] py-1 shadow-lg"
                 >
@@ -203,13 +225,56 @@ export function Toolbar({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={accept}
+          className="hidden"
+          onChange={onFileChange}
+        />
+        <button
+          type="button"
+          onClick={onOpenGallery}
+          disabled={isRunning}
+          title="Public gallery of examples"
+          className="hidden rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50 sm:inline"
+        >
+          Gallery
+        </button>
+        <button
+          type="button"
+          onClick={onOpenProblems}
+          disabled={isRunning}
+          title="Teacher problem pack"
+          className="hidden rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50 sm:inline"
+        >
+          Problems
+        </button>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isRunning}
+          title="Import a source file"
+          className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Import
+        </button>
+        <button
+          type="button"
+          onClick={onShare}
+          disabled={isRunning}
+          title="Copy shareable playground link"
+          className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Share
+        </button>
         <button
           type="button"
           onClick={onClearCode}
           disabled={isRunning}
           title="Clear all code in the editor"
-          className="rounded-md border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50"
+          className="hidden rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50 md:inline"
         >
           Clear
         </button>
@@ -218,7 +283,7 @@ export function Toolbar({
           onClick={onResetCode}
           disabled={isRunning}
           title="Restore sample code"
-          className="rounded-md border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50"
+          className="hidden rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50 md:inline"
         >
           Reset
         </button>
@@ -227,9 +292,18 @@ export function Toolbar({
           onClick={onClearTerminal}
           disabled={isRunning}
           title="Clear terminal output"
-          className="rounded-md border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50"
+          className="hidden rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50 lg:inline"
         >
           Clear output
+        </button>
+        <button
+          type="button"
+          onClick={onExportCode}
+          disabled={isRunning}
+          title={`Download ${fileName}`}
+          className="hidden rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--text)] transition hover:bg-[#3d3f43] disabled:cursor-not-allowed disabled:opacity-50 sm:inline"
+        >
+          Export
         </button>
         <button
           type="button"
