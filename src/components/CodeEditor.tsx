@@ -1,7 +1,7 @@
 "use client";
 
 import Editor, { type OnMount } from "@monaco-editor/react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { LangId } from "@/lib/languages";
 import { usesWideTabs } from "@/lib/languages";
 
@@ -15,6 +15,18 @@ type CodeEditorProps = {
   editorPath: string;
 };
 
+function useIsNarrow(breakpoint = 768) {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [breakpoint]);
+  return narrow;
+}
+
 export function CodeEditor({
   value,
   onChange,
@@ -24,13 +36,18 @@ export function CodeEditor({
   langId,
   editorPath,
 }: CodeEditorProps) {
+  const isNarrow = useIsNarrow();
+
   const handleMount: OnMount = useCallback(
     (editor, monaco) => {
       editor.addCommand(
         monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
         () => onRun()
       );
-      editor.focus();
+      // Don't auto-focus on mobile — avoids keyboard popping open
+      if (window.matchMedia("(min-width: 768px)").matches) {
+        editor.focus();
+      }
     },
     [onRun]
   );
@@ -68,30 +85,38 @@ export function CodeEditor({
           </div>
         }
         options={{
-          fontSize: 14,
+          fontSize: isNarrow ? 13 : 14,
           fontFamily:
             "var(--font-geist-mono), 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace",
           fontLigatures: true,
-          minimap: { enabled: true, scale: 1 },
+          minimap: { enabled: !isNarrow, scale: 1 },
           scrollBeyondLastLine: false,
           automaticLayout: true,
           tabSize: usesWideTabs(langId) ? 4 : 2,
           insertSpaces: true,
           wordWrap: "on",
-          lineNumbers: "on",
+          lineNumbers: isNarrow ? "on" : "on",
+          lineNumbersMinChars: isNarrow ? 3 : 5,
+          glyphMargin: !isNarrow,
+          folding: !isNarrow,
           renderLineHighlight: "line",
           cursorBlinking: "smooth",
           smoothScrolling: true,
-          padding: { top: 8, bottom: 8 },
+          padding: { top: isNarrow ? 6 : 8, bottom: isNarrow ? 6 : 8 },
           bracketPairColorization: { enabled: true },
           guides: {
             indentation: true,
-            bracketPairs: true,
+            bracketPairs: !isNarrow,
           },
           suggestOnTriggerCharacters: true,
           quickSuggestions: true,
-          folding: true,
           formatOnPaste: true,
+          // Better mobile editing
+          mouseWheelZoom: true,
+          scrollbar: {
+            verticalScrollbarSize: isNarrow ? 8 : 12,
+            horizontalScrollbarSize: isNarrow ? 8 : 12,
+          },
         }}
       />
       <span className="sr-only">{fileName}</span>

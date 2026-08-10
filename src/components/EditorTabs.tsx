@@ -42,9 +42,14 @@ export function EditorTabs({
   useLayoutEffect(() => {
     if (!menuOpen || !btnRef.current) return;
     const rect = btnRef.current.getBoundingClientRect();
+    const width = 220;
+    const left = Math.min(
+      Math.max(8, rect.left),
+      Math.max(8, window.innerWidth - width - 8)
+    );
     setMenuPos({
       top: rect.bottom + 4,
-      left: Math.max(8, rect.left),
+      left,
     });
   }, [menuOpen]);
 
@@ -88,10 +93,10 @@ export function EditorTabs({
   return (
     <div
       id="editor-tab-bar"
-      className="relative z-[200] flex h-10 min-h-10 w-full shrink-0 items-center border-b border-[#3c3f41] bg-[#1a1b1e]"
+      className="relative z-[200] flex h-11 min-h-11 w-full shrink-0 items-center border-b border-[#3c3f41] bg-[#1a1b1e] sm:h-10 sm:min-h-10"
       style={{ pointerEvents: "auto" }}
     >
-      <div className="flex h-full min-w-0 flex-1 items-stretch overflow-x-auto">
+      <div className="flex h-full min-w-0 flex-1 items-stretch overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
         {tabs.map((tab) => {
           const active = tab.id === activeTabId;
           const name = tabDisplayName(tab, tabs);
@@ -99,7 +104,7 @@ export function EditorTabs({
           return (
             <div
               key={tab.id}
-              className={`group flex h-full max-w-[12.5rem] shrink-0 items-center gap-2 border-r border-[#3c3f41] px-3 text-xs font-mono ${
+              className={`group flex h-full max-w-[10rem] shrink-0 items-center gap-1.5 border-r border-[#3c3f41] px-2 text-xs font-mono sm:max-w-[12.5rem] sm:gap-2 sm:px-3 ${
                 active
                   ? "border-t-2 border-t-[#3574f0] bg-[#2b2d30] text-white"
                   : "border-t-2 border-t-transparent text-[#9aa0a6] hover:bg-[#252628] hover:text-[#ddd]"
@@ -108,7 +113,7 @@ export function EditorTabs({
               <button
                 type="button"
                 onClick={() => onSelect(tab.id)}
-                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left sm:min-h-0"
                 title={`${lang.label}: ${name}`}
               >
                 <span
@@ -126,7 +131,7 @@ export function EditorTabs({
                     e.stopPropagation();
                     onClose(tab.id);
                   }}
-                  className="rounded px-1 text-base leading-none text-white/70 hover:bg-white/10 hover:text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded text-base leading-none text-white/70 hover:bg-white/10 hover:text-white sm:h-auto sm:w-auto sm:px-1"
                 >
                   ×
                 </button>
@@ -146,7 +151,7 @@ export function EditorTabs({
             aria-haspopup="menu"
             onClick={openMenu}
             onPointerDown={(e) => e.stopPropagation()}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/40 text-white hover:border-white hover:bg-white/10 active:bg-white/20"
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-white/40 text-white hover:border-white hover:bg-white/10 active:bg-white/20 sm:h-8 sm:w-8"
             style={{ pointerEvents: "auto", cursor: "pointer" }}
           >
             <svg
@@ -181,7 +186,8 @@ export function EditorTabs({
               left: menuPos.left,
               zIndex: 99999,
               minWidth: 200,
-              maxHeight: 360,
+              maxWidth: "calc(100vw - 16px)",
+              maxHeight: "min(60vh, 360px)",
               overflowY: "auto",
               background: "#2b2d30",
               border: "1px solid #555",

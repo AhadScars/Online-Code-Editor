@@ -16,6 +16,8 @@ export type EditorTab = {
   title?: string;
   /** Active teacher problem id, if any */
   problemId?: string | null;
+  /** Active gallery example id, if any */
+  galleryId?: string | null;
 };
 
 export function createTabId(): string {
@@ -25,7 +27,7 @@ export function createTabId(): string {
 export function createTab(
   langId: LangId = "java",
   overrides?: Partial<
-    Pick<EditorTab, "code" | "stdin" | "title" | "problemId">
+    Pick<EditorTab, "code" | "stdin" | "title" | "problemId" | "galleryId">
   >
 ): EditorTab {
   const lang = getLanguage(langId);
@@ -38,6 +40,7 @@ export function createTab(
     previewHtml: "",
     title: overrides?.title,
     problemId: overrides?.problemId ?? null,
+    galleryId: overrides?.galleryId ?? null,
   };
 }
 

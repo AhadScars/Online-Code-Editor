@@ -13,17 +13,17 @@ export function Preview({
 }: PreviewProps) {
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="flex h-8 shrink-0 items-center justify-between border-b border-[var(--border-soft)] bg-[var(--bg-tab)] px-3">
+      <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-[var(--border-soft)] bg-[var(--bg-tab)] px-2 sm:h-8 sm:px-3">
         <div className="flex min-w-0 items-center gap-2 text-xs text-[var(--text-bright)]">
           <PreviewIcon />
           <span>{label}</span>
           {tabLabel && (
-            <span className="truncate font-mono text-[10px] text-[var(--text-dim)]">
+            <span className="hidden truncate font-mono text-[10px] text-[var(--text-dim)] sm:inline">
               · {tabLabel}
             </span>
           )}
         </div>
-        <span className="shrink-0 text-[10px] text-[var(--text-dim)]">
+        <span className="hidden shrink-0 text-[10px] text-[var(--text-dim)] sm:inline">
           sandboxed iframe
         </span>
       </div>

@@ -15,12 +15,16 @@ export type Problem = {
   id: string;
   title: string;
   difficulty: "easy" | "medium" | "hard";
+  /** Default / recommended language */
   langId: LangId;
   /** Markdown-ish plain text description */
   description: string;
   /** Hints / constraints */
   constraints?: string;
+  /** Official starter for langId (and fallback base) */
   starterCode: string;
+  /** Optional per-language starter overrides */
+  starters?: Partial<Record<LangId, string>>;
   tests: ProblemTest[];
 };
 
@@ -920,9 +924,12 @@ export type TestRunResult = {
 
 export async function runProblemTests(
   problem: Problem,
-  code: string
+  code: string,
+  /** Language the student is using (may differ from problem.langId) */
+  language?: LangId
 ): Promise<TestRunResult[]> {
   const results: TestRunResult[] = [];
+  const runLang = language ?? problem.langId;
 
   for (const test of problem.tests) {
     try {
@@ -932,7 +939,7 @@ export async function runProblemTests(
         body: JSON.stringify({
           code,
           stdin: test.stdin,
-          language: problem.langId,
+          language: runLang,
         }),
       });
       const data = (await res.json()) as {

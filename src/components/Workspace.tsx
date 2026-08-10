@@ -11,6 +11,7 @@ import { ShareModal } from "@/components/ShareModal";
 import { Terminal, type TerminalLine } from "@/components/Terminal";
 import { Toolbar } from "@/components/Toolbar";
 import type { GalleryItem } from "@/lib/gallery";
+import { getGalleryItem } from "@/lib/gallery";
 import {
   type LangId,
   buildPreviewHtml,
@@ -31,6 +32,11 @@ import {
   buildShareUrl,
   readShareFromLocation,
 } from "@/lib/share";
+import {
+  getGalleryCode,
+  getProblemStarter,
+  problemSupportsLang,
+} from "@/lib/starters";
 import {
   type EditorTab,
   createTab,
@@ -92,14 +98,19 @@ export function Workspace() {
   const [shareUrl, setShareUrl] = useState("");
   const [testResults, setTestResults] = useState<TestRunResult[] | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  /** Phone / small tablet: swap full-height Code vs Output instead of cramped split */
+  const [isNarrow, setIsNarrow] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<"editor" | "output">("editor");
   const shareBootstrapped = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const runLockRef = useRef(false);
   const abortedRef = useRef(false);
   const inputResolverRef = useRef<((line: string) => void) | null>(null);
+  const isNarrowRef = useRef(false);
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
+  isNarrowRef.current = isNarrow;
 
   const activeTab = useMemo(
     () => tabs.find((t) => t.id === activeTabId) ?? tabs[0],
@@ -146,6 +157,21 @@ export function Workspace() {
     window.history.replaceState({}, "", url.pathname + url.hash);
   }, []);
 
+  // Track narrow viewports (phones / small tablets in portrait)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => {
+      const narrow = mq.matches;
+      setIsNarrow(narrow);
+      if (narrow) {
+        setEditorRatio((r) => Math.min(r, 0.55));
+      }
+    };
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   const patchActive = useCallback(
     (patch: Partial<EditorTab> | ((tab: EditorTab) => Partial<EditorTab>)) => {
       setTabs((prev) => updateTab(prev, activeTabId, patch));
@@ -167,6 +193,79 @@ export function Workspace() {
     (id: LangId) => {
       const lang = getLanguage(id);
       setTestResults(null);
+
+      const tab = tabsRef.current.find((t) => t.id === activeTabId);
+      const problem = tab?.problemId ? getProblem(tab.problemId) : null;
+      const gallery = tab?.galleryId ? getGalleryItem(tab.galleryId) : null;
+
+      // Stay in problem mode — only swap language + starter
+      if (problem) {
+        if (!problemSupportsLang(problem, id)) {
+          patchActive((t) => ({
+            lines: [
+              ...t.lines,
+              ...appendLines([
+                {
+                  kind: "error",
+                  text: `${lang.label} is not supported for this problem. Pick a terminal language.`,
+                },
+                { kind: "info", text: "" },
+              ]),
+            ],
+          }));
+          return;
+        }
+        patchActive((t) => ({
+          langId: id,
+          code: getProblemStarter(problem, id),
+          previewHtml: "",
+          stdin: lang.defaultStdin,
+          problemId: problem.id,
+          galleryId: null,
+          title: problem.title,
+          lines: [
+            ...t.lines,
+            ...appendLines([
+              {
+                kind: "system",
+                text: `Language → ${lang.label} (problem: ${problem.title})`,
+              },
+              {
+                kind: "info",
+                text: "Starter reloaded for the new language. Run tests when ready.",
+              },
+              { kind: "info", text: "" },
+            ]),
+          ],
+        }));
+        return;
+      }
+
+      // Stay on gallery context — load example or template for new language
+      if (gallery) {
+        patchActive((t) => ({
+          langId: id,
+          code: getGalleryCode(gallery, id),
+          previewHtml: "",
+          stdin: lang.defaultStdin,
+          problemId: null,
+          galleryId: gallery.id,
+          title: gallery.title,
+          lines: [
+            ...t.lines,
+            ...appendLines([
+              {
+                kind: "system",
+                text: `Language → ${lang.label} (gallery: ${gallery.title})`,
+              },
+              { kind: "info", text: "" },
+            ]),
+          ],
+        }));
+        return;
+      }
+
+      // Normal free edit
       patchActive({
         langId: id,
         code: lang.sample,
@@ -174,10 +273,11 @@ export function Workspace() {
         previewHtml: "",
         stdin: lang.defaultStdin,
         problemId: null,
+        galleryId: null,
         title: undefined,
       });
     },
-    [patchActive]
+    [activeTabId, patchActive]
   );
 
   const handleNewTab = useCallback((langId: LangId) => {
@@ -228,19 +328,38 @@ export function Workspace() {
   const resetCode = useCallback(() => {
     if (activeProblem) {
       patchActive((tab) => ({
-        code: activeProblem.starterCode,
+        code: getProblemStarter(activeProblem, tab.langId),
         lines: [
           ...tab.lines,
           ...appendLines([
             {
               kind: "system",
-              text: `Problem starter restored: ${activeProblem.title}`,
+              text: `Problem starter restored: ${activeProblem.title} (${getLanguage(tab.langId).label})`,
             },
             { kind: "info", text: "" },
           ]),
         ],
       }));
       setTestResults(null);
+      return;
+    }
+    const gallery = activeTab.galleryId
+      ? getGalleryItem(activeTab.galleryId)
+      : null;
+    if (gallery) {
+      patchActive((tab) => ({
+        code: getGalleryCode(gallery, tab.langId),
+        lines: [
+          ...tab.lines,
+          ...appendLines([
+            {
+              kind: "system",
+              text: `Gallery example restored: ${gallery.title}`,
+            },
+            { kind: "info", text: "" },
+          ]),
+        ],
+      }));
       return;
     }
     const lang = getLanguage(activeTab.langId);
@@ -258,7 +377,7 @@ export function Workspace() {
         ]),
       ],
     }));
-  }, [activeTab.langId, activeProblem, patchActive]);
+  }, [activeTab.langId, activeTab.galleryId, activeProblem, patchActive]);
 
   const appendToTab = useCallback(
     (
@@ -346,15 +465,29 @@ export function Workspace() {
     setShareOpen(true);
   }, [activeTabId]);
 
-  const openGalleryItem = useCallback((item: GalleryItem) => {
-    const tab = createTab(item.langId, {
-      code: item.code,
-      stdin: item.stdin,
+  const openGalleryItem = useCallback((item: GalleryItem, langId: LangId) => {
+    const lang = getLanguage(langId);
+    const code = getGalleryCode(item, langId);
+    const tab = createTab(langId, {
+      code,
+      stdin: item.stdin ?? lang.defaultStdin,
       title: item.title,
       problemId: null,
+      galleryId: item.id,
     });
     tab.lines = appendLines([
-      { kind: "system", text: `Opened gallery: ${item.title}` },
+      {
+        kind: "system",
+        text: `Opened gallery: ${item.title} · ${lang.label}`,
+      },
+      ...(langId !== item.langId
+        ? [
+            {
+              kind: "info" as const,
+              text: `Original example language was ${getLanguage(item.langId).label}. Adapt the code as needed.`,
+            },
+          ]
+        : []),
       { kind: "info", text: "" },
     ]);
     setTabs((prev) => [...prev, tab]);
@@ -362,20 +495,23 @@ export function Workspace() {
     setTestResults(null);
   }, []);
 
-  const openProblem = useCallback((problem: Problem) => {
-    const tab = createTab(problem.langId, {
-      code: problem.starterCode,
+  const openProblem = useCallback((problem: Problem, langId: LangId) => {
+    const lang = getLanguage(langId);
+    const code = getProblemStarter(problem, langId);
+    const tab = createTab(langId, {
+      code,
       title: problem.title,
       problemId: problem.id,
+      galleryId: null,
     });
     tab.lines = appendLines([
       {
         kind: "system",
-        text: `Problem loaded: ${problem.title}`,
+        text: `Problem loaded: ${problem.title} · ${lang.label}`,
       },
       {
         kind: "info",
-        text: "Write your solution, then click Run tests.",
+        text: "Write your solution in any language, then click Run tests. Change language anytime from the toolbar.",
       },
       { kind: "info", text: "" },
     ]);
@@ -385,7 +521,7 @@ export function Workspace() {
   }, []);
 
   const clearProblem = useCallback(() => {
-    patchActive({ problemId: null, title: undefined });
+    patchActive({ problemId: null, galleryId: null, title: undefined });
     setTestResults(null);
   }, [patchActive]);
 
@@ -403,12 +539,16 @@ export function Workspace() {
     appendToTab(tab.id, [
       {
         kind: "system",
-        text: `> run tests · ${activeProblem.title} (${activeProblem.tests.length} cases)`,
+        text: `> run tests · ${activeProblem.title} · ${getLanguage(tab.langId).label} (${activeProblem.tests.length} cases)`,
       },
     ]);
 
     try {
-      const results = await runProblemTests(activeProblem, tab.code);
+      const results = await runProblemTests(
+        activeProblem,
+        tab.code,
+        tab.langId
+      );
       setTestResults(results);
       const passed = results.filter((r) => r.passed).length;
       const total = results.length;
@@ -507,6 +647,7 @@ export function Workspace() {
               return;
             }
             setWaitingForInput(true);
+            if (isNarrowRef.current) setMobilePanel("output");
             inputResolverRef.current = resolve;
           }),
         isAborted: () => abortedRef.current,
@@ -564,6 +705,8 @@ export function Workspace() {
     clearInputWait();
     setRunningTabId(tab.id);
     setIsRunning(true);
+    // On phones, show output as soon as a run starts
+    if (isNarrowRef.current) setMobilePanel("output");
 
     const lang = getLanguage(tab.langId);
     const fname = fileNameFor(tab.langId, tab.code);
@@ -638,24 +781,31 @@ export function Workspace() {
     runInteractiveLanguage,
   ]);
 
+  // Splitter: mouse + touch (pointer events)
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       if (!dragging.current || !containerRef.current) return;
+      e.preventDefault();
       const rect = containerRef.current.getBoundingClientRect();
       const y = e.clientY - rect.top;
+      const min = isNarrowRef.current ? 0.2 : 0.25;
+      const max = isNarrowRef.current ? 0.8 : 0.85;
       const ratio = y / rect.height;
-      setEditorRatio(Math.min(0.85, Math.max(0.25, ratio)));
+      setEditorRatio(Math.min(max, Math.max(min, ratio)));
     };
     const onUp = () => {
+      if (!dragging.current) return;
       dragging.current = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, []);
 
@@ -716,8 +866,29 @@ export function Workspace() {
   const showPreview = language.outputMode === "preview";
   const runningThisTab = isRunning && runningTabId === activeTab.id;
 
+  // On narrow screens, one full panel at a time; on desktop, resizable split
+  const showEditorPane = !isNarrow || mobilePanel === "editor";
+  const showOutputPane = !isNarrow || mobilePanel === "output";
+
+  const outputPane = showPreview ? (
+    <Preview
+      html={activeTab.previewHtml}
+      label={activeTab.langId === "css" ? "CSS Preview" : "HTML Preview"}
+      tabLabel={displayName}
+    />
+  ) : (
+    <Terminal
+      lines={activeTab.lines}
+      isRunning={runningThisTab}
+      waitingForInput={runningThisTab && waitingForInput}
+      onSubmitInput={submitProgramInput}
+      onCancelRun={cancelRun}
+      tabLabel={displayName}
+    />
+  );
+
   return (
-    <div className="relative flex h-dvh min-h-0 flex-col">
+    <div className="app-shell relative flex min-h-0 flex-col">
       <Toolbar
         language={language}
         fileName={displayName}
@@ -745,64 +916,110 @@ export function Workspace() {
       {activeProblem && (
         <ProblemPanel
           problem={activeProblem}
+          langId={activeTab.langId}
           isRunning={isRunning}
           results={testResults}
-          onRunTests={() => void handleRunTests()}
+          onRunTests={() => {
+            if (isNarrow) setMobilePanel("output");
+            void handleRunTests();
+          }}
           onClear={clearProblem}
         />
       )}
 
-      <div ref={containerRef} className="flex min-h-0 flex-1 flex-col">
+      {/* Mobile: Code | Output switcher */}
+      {isNarrow && (
         <div
-          className="min-h-0 overflow-hidden"
-          style={{ flex: `0 0 ${editorRatio * 100}%` }}
+          className="flex shrink-0 border-b border-[var(--border)] bg-[#1a1b1e] p-1"
+          role="tablist"
+          aria-label="Editor or output"
         >
-          <CodeEditor
-            value={activeTab.code}
-            onChange={(value) => patchActive({ code: value })}
-            onRun={() => void runCode()}
-            language={language.monaco}
-            fileName={displayName}
-            langId={activeTab.langId}
-            editorPath={editorPath}
-          />
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobilePanel === "editor"}
+            onClick={() => setMobilePanel("editor")}
+            className={`min-h-9 flex-1 rounded-md text-xs font-semibold transition ${
+              mobilePanel === "editor"
+                ? "bg-[#2b2d30] text-[var(--text-bright)] shadow-sm"
+                : "text-[var(--text-dim)] hover:text-[var(--text)]"
+            }`}
+          >
+            Code
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobilePanel === "output"}
+            onClick={() => setMobilePanel("output")}
+            className={`min-h-9 flex-1 rounded-md text-xs font-semibold transition ${
+              mobilePanel === "output"
+                ? "bg-[#2b2d30] text-[var(--text-bright)] shadow-sm"
+                : "text-[var(--text-dim)] hover:text-[var(--text)]"
+            }`}
+          >
+            {showPreview ? "Preview" : "Output"}
+            {runningThisTab && (
+              <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--warning)]" />
+            )}
+          </button>
         </div>
+      )}
 
-        <div
-          className="splitter relative z-10 h-1.5 shrink-0 cursor-row-resize bg-[var(--border)]"
-          onMouseDown={() => {
-            dragging.current = true;
-            document.body.style.cursor = "row-resize";
-            document.body.style.userSelect = "none";
-          }}
-          title="Drag to resize"
-          role="separator"
-          aria-orientation="horizontal"
-        />
+      <div ref={containerRef} className="flex min-h-0 flex-1 flex-col">
+        {showEditorPane && (
+          <div
+            className="min-h-0 overflow-hidden"
+            style={
+              isNarrow
+                ? { flex: "1 1 auto" }
+                : { flex: `0 0 ${editorRatio * 100}%` }
+            }
+          >
+            <CodeEditor
+              value={activeTab.code}
+              onChange={(value) => patchActive({ code: value })}
+              onRun={() => void runCode()}
+              language={language.monaco}
+              fileName={displayName}
+              langId={activeTab.langId}
+              editorPath={editorPath}
+            />
+          </div>
+        )}
 
-        <div className="min-h-0 flex-1 overflow-hidden">
-          {showPreview ? (
-            <Preview
-              html={activeTab.previewHtml}
-              label={
-                activeTab.langId === "css" ? "CSS Preview" : "HTML Preview"
+        {!isNarrow && (
+          <div
+            className="splitter relative z-10 h-1.5 shrink-0 cursor-row-resize bg-[var(--border)]"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              dragging.current = true;
+              document.body.style.cursor = "row-resize";
+              document.body.style.userSelect = "none";
+              try {
+                (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+              } catch {
+                /* ignore */
               }
-              tabLabel={displayName}
-            />
-          ) : (
-            <Terminal
-              lines={activeTab.lines}
-              isRunning={runningThisTab}
-              waitingForInput={runningThisTab && waitingForInput}
-              onSubmitInput={submitProgramInput}
-              onCancelRun={cancelRun}
-              tabLabel={displayName}
-            />
-          )}
-        </div>
+            }}
+            title="Drag to resize"
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Resize editor and output"
+          />
+        )}
+
+        {showOutputPane && (
+          <div
+            className="min-h-0 overflow-hidden"
+            style={isNarrow ? { flex: "1 1 auto" } : { flex: "1 1 0%" }}
+          >
+            {outputPane}
+          </div>
+        )}
       </div>
 
-      {dragOver && (
+      {dragOver && !isNarrow && (
         <div className="pointer-events-none absolute inset-0 z-[50000] flex items-center justify-center bg-[var(--accent)]/15 backdrop-blur-[1px]">
           <div className="rounded-xl border-2 border-dashed border-[var(--accent)] bg-[#1e1f22]/90 px-8 py-6 text-sm font-semibold text-[var(--text-bright)] shadow-xl">
             Drop file to import
