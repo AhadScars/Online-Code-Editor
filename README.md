@@ -80,44 +80,6 @@ npm run lint    # ESLint
 
 ---
 
-## Deploy to Vercel
-
-### GitHub
-1. Push this repo to GitHub.
-2. Import at [vercel.com/new](https://vercel.com/new).
-3. Framework: **Next.js** (defaults are fine) → Deploy.
-
-### CLI
-```bash
-npm i -g vercel
-vercel
-```
-
-### Environment variables (optional)
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `JUDGE0_API_URL` | `https://ce.judge0.com` | Judge0 base URL |
-| `JUDGE0_API_KEY` | — | Auth token (self-hosted) |
-| `JUDGE0_RAPIDAPI_KEY` | — | RapidAPI key |
-| `JUDGE0_RAPIDAPI_HOST` | `judge0-ce.p.rapidapi.com` | RapidAPI host |
-| `JUDGE0_JAVA_LANGUAGE_ID` | `62` | Override language id |
-| `JUDGE0_PYTHON_LANGUAGE_ID` | `71` | … |
-| `JUDGE0_C_LANGUAGE_ID` | `50` | … |
-| `JUDGE0_CPP_LANGUAGE_ID` | `54` | … |
-| `JUDGE0_TS_LANGUAGE_ID` | `74` | … |
-| `JUDGE0_GO_LANGUAGE_ID` | `60` | … |
-| `JUDGE0_RUST_LANGUAGE_ID` | `73` | … |
-| `JUDGE0_KOTLIN_LANGUAGE_ID` | `78` | … |
-| `JUDGE0_PHP_LANGUAGE_ID` | `68` | … |
-| `JUDGE0_RUBY_LANGUAGE_ID` | `72` | … |
-| `JUDGE0_CSHARP_LANGUAGE_ID` | `51` | … |
-| `JUDGE0_SQL_LANGUAGE_ID` | `82` | … |
-
-Public `ce.judge0.com` works without a key for light use. For production traffic, [self-host Judge0](https://github.com/judge0/judge0) or use [Judge0 on RapidAPI](https://rapidapi.com/judge0-official/api/judge0-ce).
-
----
-
 ## Project structure
 
 ```
