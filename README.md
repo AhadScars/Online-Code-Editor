@@ -1,97 +1,180 @@
-# Terminal - Online Code Editor
+# Terminal — Online Code Editor
 
-IntelliJ-style **two-pane** web IDE: write code in Monaco, see **terminal** or **live preview**. Built with **Next.js** and ready for **Vercel**.
+Browser-based IDE: write code in **Monaco**, run it in a **terminal** or open a **live preview**.  
+Built with **Next.js 16**, **React 19**, and **Tailwind CSS 4**. Deploy-ready on **Vercel**.
+
+Works on **phone, tablet, and desktop** (responsive layout with Code / Output panels on mobile).
+
+---
 
 ## Features
 
-- Languages: **Java**, **Python**, **C**, **C++**, **JavaScript**, **TypeScript**, **Go**, **Rust**, **Kotlin**, **PHP**, **Ruby**, **C#**, **SQL**, **HTML**, **CSS**
-- Monaco editor with syntax highlighting per language
-- Multi-tab workspace + split layout (editor / terminal or preview)
-- **Run / Preview** + `Ctrl/Cmd + Enter`
-- **Share** playground links (open the same code in any browser)
-- **Import** files (toolbar or drag-and-drop) + **Export** download
-- **Public Gallery** of examples
-- **Teacher Problem Pack** with starter code + automated tests
-- Run stats: wall time, **CPU time**, and **memory** (Judge0)
-- Interactive **stdin** for supported languages
+### Editor & workspace
+- **Monaco** editor with syntax highlighting, ligatures, and word wrap
+- **Multi-tab** workspace (new tab, close, language per tab)
+- **Split layout**: editor + terminal / preview (drag to resize on desktop)
+- **Mobile**: full-height **Code | Output** switcher
+- **Run / Preview** with `Ctrl/Cmd + Enter`
+- **Import** (file picker or drag-and-drop) + **Export** download
+- **Share** playground links (`?p=…`) — open the same language + code in any browser
 
-| Language | Output |
-|----------|--------|
-| Java, Python, C, C++ | Terminal (Judge0) |
-| TypeScript, Go, Rust, Kotlin | Terminal (Judge0) |
-| PHP, Ruby, C#, SQL | Terminal (Judge0) |
-| JavaScript | Terminal (browser) |
-| HTML / CSS | Live preview |
+### Languages
+
+| Language | How it runs |
+|----------|-------------|
+| Java, Python, C, C++ | Terminal via [Judge0 CE](https://ce.judge0.com) |
+| TypeScript, Go, Rust, Kotlin | Terminal via Judge0 |
+| PHP, Ruby, C#, SQL (SQLite) | Terminal via Judge0 |
+| JavaScript | Terminal in the **browser** (fast, no network) |
+| HTML, CSS | **Live preview** iframe (stays in the browser) |
+
+### Learning & classroom
+- **Public Gallery** — searchable examples (basics, algorithms, web, data) with pagination  
+  Open any example in **any language** you choose
+- **Teacher Problem Pack** — problems with starter code + automated tests (sample + hidden)  
+  Solve in **any supported language**; tests check stdin/stdout
+- Interactive **stdin** in the terminal (Scanner / `input()` / `cin` style)
+- After each Judge0 run: **wall time**, **CPU time**, and **memory**
+
+### Toolbar
+- Language picker, Run, Share, Import  
+- **More (⋯)**: Gallery, Problems, Export, Reset, Clear code, Clear output  
+
+---
 
 ## How execution works
 
-The browser does **not** run Java/Python/C/C++ locally. The `/api/run` route sends code to **[Judge0 CE](https://ce.judge0.com)** (`ce.judge0.com`), which compiles and runs it in a sandbox.
+```
+┌─────────────┐     /api/run      ┌──────────────────┐
+│  Browser    │ ───────────────► │  Judge0 CE sandbox│
+│  Monaco UI  │ ◄─────────────── │  compile + run    │
+└─────────────┘   stdout/stderr  └──────────────────┘
+       │
+       ├── JavaScript → runs in browser
+       └── HTML/CSS   → iframe preview only
+```
 
-No local JDK, Python, or GCC is required on your machine or on Vercel.
+- Server languages are **not** executed on Vercel’s Node runtime.
+- Code is sent to **Judge0** (public CE, RapidAPI, or self-hosted).
+- No local JDK, Python, GCC, etc. needed on your machine or on Vercel.
 
-## Local development
+---
+
+## Quick start
 
 ```bash
-cd java-editor
+# Install
 npm install
+
+# Dev server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
+```bash
+npm run build   # production build
+npm start       # serve production build
+npm run lint    # ESLint
+```
+
+---
+
 ## Deploy to Vercel
 
-### Option A — Vercel CLI
+### GitHub
+1. Push this repo to GitHub.
+2. Import at [vercel.com/new](https://vercel.com/new).
+3. Framework: **Next.js** (defaults are fine) → Deploy.
 
+### CLI
 ```bash
 npm i -g vercel
-cd java-editor
 vercel
 ```
 
-### Option B — GitHub
-
-1. Push this folder to a GitHub repo.
-2. Go to [vercel.com/new](https://vercel.com/new).
-3. Import the repo → Deploy (defaults work; Framework: Next.js).
-
-### Optional env
+### Environment variables (optional)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `JUDGE0_API_URL` | `https://ce.judge0.com` | Judge0 base URL (self-host or RapidAPI host) |
-| `JUDGE0_JAVA_LANGUAGE_ID` | `62` | Judge0 language id for Java |
-| `JUDGE0_API_KEY` | — | Auth token if your Judge0 instance requires it |
-| `JUDGE0_RAPIDAPI_KEY` | — | RapidAPI key if using Judge0 on RapidAPI |
+| `JUDGE0_API_URL` | `https://ce.judge0.com` | Judge0 base URL |
+| `JUDGE0_API_KEY` | — | Auth token (self-hosted) |
+| `JUDGE0_RAPIDAPI_KEY` | — | RapidAPI key |
+| `JUDGE0_RAPIDAPI_HOST` | `judge0-ce.p.rapidapi.com` | RapidAPI host |
+| `JUDGE0_JAVA_LANGUAGE_ID` | `62` | Override language id |
+| `JUDGE0_PYTHON_LANGUAGE_ID` | `71` | … |
+| `JUDGE0_C_LANGUAGE_ID` | `50` | … |
+| `JUDGE0_CPP_LANGUAGE_ID` | `54` | … |
+| `JUDGE0_TS_LANGUAGE_ID` | `74` | … |
+| `JUDGE0_GO_LANGUAGE_ID` | `60` | … |
+| `JUDGE0_RUST_LANGUAGE_ID` | `73` | … |
+| `JUDGE0_KOTLIN_LANGUAGE_ID` | `78` | … |
+| `JUDGE0_PHP_LANGUAGE_ID` | `68` | … |
+| `JUDGE0_RUBY_LANGUAGE_ID` | `72` | … |
+| `JUDGE0_CSHARP_LANGUAGE_ID` | `51` | … |
+| `JUDGE0_SQL_LANGUAGE_ID` | `82` | … |
 
-Public `ce.judge0.com` works without a key for light use. For production traffic, [self-host](https://github.com/judge0/judge0) or use [Judge0 on RapidAPI](https://rapidapi.com/judge0-official/api/judge0-ce).
+Public `ce.judge0.com` works without a key for light use. For production traffic, [self-host Judge0](https://github.com/judge0/judge0) or use [Judge0 on RapidAPI](https://rapidapi.com/judge0-official/api/judge0-ce).
+
+---
 
 ## Project structure
 
 ```
 src/
   app/
-    api/run/route.ts   # Java execute API (Judge0 CE)
-    page.tsx           # Main workspace
-    layout.tsx
-    globals.css
+    api/run/route.ts      # Judge0 proxy (compile + run)
+    page.tsx              # App entry → Workspace
+    layout.tsx            # Metadata, viewport, fonts
+    globals.css           # Theme, safe-area, responsive helpers
   components/
-    Workspace.tsx      # Split panes + run logic
-    CodeEditor.tsx     # Monaco
-    Terminal.tsx       # Output panel
-    Toolbar.tsx        # Run / Clear / Reset
+    Workspace.tsx         # Tabs, run flow, share, mobile panels
+    Toolbar.tsx           # Actions + language picker
+    CodeEditor.tsx        # Monaco
+    EditorTabs.tsx        # Multi-tab bar
+    Terminal.tsx          # stdout / stderr / stdin
+    Preview.tsx           # HTML/CSS iframe
+    GalleryModal.tsx      # Public examples
+    ProblemsModal.tsx     # Teacher problem pack
+    ProblemPanel.tsx      # Active problem + Run tests
+    ShareModal.tsx        # Shareable link
+    Pagination.tsx        # Gallery / problems pages
+    LangPicker.tsx        # Language select in modals
+    Modal.tsx             # Shared dialog (responsive sheet on mobile)
   lib/
-    java.ts            # Sample code + class name helper
+    languages.ts          # Language configs + samples
+    gallery.ts            # Gallery examples
+    problems.ts           # Problem definitions + test runner
+    starters.ts           # Multi-language starters
+    share.ts              # Encode / decode share URLs
+    runInteractive.ts     # Interactive Judge0 stdin loop
+    runJs.ts              # Browser JavaScript runner
+    tabs.ts               # Tab model helpers
 ```
+
+---
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl/Cmd + Enter` | Run / Preview |
+| `Ctrl/Cmd + T` | New tab (same language) |
+| `Ctrl/Cmd + W` | Close tab |
+| `Escape` | Close modal / menus |
+
+---
 
 ## Notes & limits
 
-- Public Judge0 has rate limits and CPU/memory caps (~5s CPU).
-- Use a `public class` with a `main` method (e.g. `public class Main`).
-- Network required for Run (calls the execution API).
+- Public Judge0 has **rate limits** and caps (~5s CPU, limited memory).
+- Java: use a `public class` with `main` (e.g. `public class Main`).
+- Network is required for Judge0 languages; **JS / HTML / CSS** work offline.
+- Share links put code in the URL — very large snippets may be truncated by some messengers.
+- SQL problems run as **SQLite** on Judge0; other problems can be solved in any terminal language.
 
-## Project notes
+---
 
-- HTML/CSS never leave the browser (preview only).
-- JavaScript runs in the browser by default (fast, offline-capable).
-- Java uses Judge0 over the network.
+## License
+
+Private project (`private: true` in `package.json`). Adjust as needed if you open-source it.
