@@ -56,7 +56,7 @@ Works on **phone, tablet, and desktop** (responsive layout with Code / Output pa
 
 - Server languages are **not** executed on Vercel’s Node runtime.
 - Code is sent to **Judge0** (public CE, RapidAPI, or self-hosted).
-- No local JDK, Python, GCC, etc. needed on your machine or on Vercel.
+- No local JDK, Python, GCC, etc. needed on your machine or on Vercel
 
 ---
 
