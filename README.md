@@ -10,7 +10,7 @@ Works on **phone, tablet, and desktop** (responsive layout with Code / Output pa
 ## Features
 
 ### Editor & workspace
-- **Monaco** editor with syntax highlighting, ligatures, and word wrap
+- **Monaco** editor with syntax highlighting, ligatures, and word wrap.
 - **Multi-tab** workspace (new tab, close, language per tab)
 - **Split layout**: editor + terminal / preview (drag to resize on desktop)
 - **Mobile**: full-height **Code | Output** switcher
